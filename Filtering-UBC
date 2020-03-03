@@ -1,0 +1,150 @@
+
+
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>UBC Fields</title>
+  <meta charset="utf-8" />
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
+
+  <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+
+</head>
+
+<body>
+
+  <div id="mapid" style="width: 600px; height: 400px;"></div>
+  <!-- Our web map will get placed into this div element -->
+
+  <div id="controls" style="margin: 15px;">
+    <button id="showAllFieldsButton">Show All Fields</button>
+
+    <span style="display:inline-block; width: 30px"></span>
+    <input type="text" id="highlightFieldTextEntry" placeholder="Field Name">
+    <button id="highlightFieldButton">Highlight</button>
+
+  </div>
+
+  <script>
+    // Make a Leaflet map with L.map().
+    // Store the map in the variable 'map'.
+    // "mapid" is the 'id' of the DOM element to contain the map.
+    var map = L.map('mapid', {
+        center: [49.265637, -123.256113],
+        zoom: 14
+      } // this object holds map options
+    );
+
+var OpenMapSurfer_Roads = L.tileLayer('https://maps.heigit.org/openmapsurfer/tiles/roads/webmercator/{z}/{x}/{y}.png', {
+	maxZoom: 19,
+	attribution: 'Imagery from <a href="http://giscience.uni-hd.de/">GIScience Research Group @ University of Heidelberg</a> | Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+}
+    ).addTo(map);
+	
+
+    // load GeoJSON from a file on the web
+    // $ is jQuery.
+
+// LRB: I commented this out.
+//    var FieldMarkerOptions = {
+//      radius: 4,
+//      fillColor: "#007800",
+//      color: "#FF0000",
+//      weight: 1,
+//      opacity: 0.2,
+//      fillOpacity: 0.2
+//    }; 
+
+    function onEachField(feature, layer) {
+      // does this tree even have a property named Placename?
+      if (feature.properties && feature.properties.NAME) {
+        layer.bindTooltip(feature.properties.NAME);
+      }
+    }
+
+// LRB: I commented this out.
+//   function FieldPointToLayer(feature, latlng) {
+//     return L.circleMarker(
+//       latlng,
+//       FieldMarkerOptions
+//     );
+//	  
+//    }
+
+    function FieldToFilter(feature, layer) {
+      if (FieldToHighlight === "") {
+        return true;
+        // In this case, we're not highlighting anything, so draw everything.
+      } else if (feature.properties && feature.properties.NAME) {
+        // We just checked to make sure there are properties to avoid an error
+        //   by asking for the .NAME when there are no properties.
+        // Now, we need to check to see if the .NAME includes the search string we're
+        //   trying to highlight.
+        return feature.properties.NAME.toLowerCase().includes(FieldToHighlight.toLowerCase());
+        // We ignore uppercase/lowercase differences.
+      } else {
+        return false;
+        // This is for features that lack properties.
+        // Don't display them.
+      }
+    }
+
+    var lastLayerAdded = {};
+
+    function addField() {
+      if (map.hasLayer(lastLayerAdded)) {
+        map.removeLayer(lastLayerAdded);
+      }
+      lastLayerAdded = L.geoJSON(FieldGeoJSONdata, {
+        //pointToLayer: FieldPointToLayer,
+        style: function(feature) {
+          if (FieldToHighlight==="") {
+            return { color: "green" };
+          }
+          else {
+            return { color: "red" };
+          }
+        },
+        onEachFeature: onEachField,
+        filter: FieldToFilter
+      });
+      lastLayerAdded.addTo(map);
+    };
+
+    var FieldToHighlight = "";
+    // This is set by someone pressing the highlight button.
+    // If it's an empty string, then just draw everything.
+
+    function highlightField() {
+      FieldToHighlight = document
+        .getElementById("highlightFieldTextEntry")
+        .value;
+      addField();
+      FieldToHighlight = ""; // reset so that "Show All Name" works.
+    }
+    var FieldGeoJSONdata;
+
+
+    $.getJSON("https://raw.githubusercontent.com/UBCGeodata/ubcv-landscape/master/geojson/ubcv_landscape_features.geojson",
+      function(data) {
+        // Store data for later:
+        FieldGeoJSONdata = data;
+        // Create event listener for ShowAllName Button:
+        document
+          .getElementById("showAllFieldsButton")
+          .addEventListener("click", addField);
+
+        document
+          .getElementById("highlightFieldButton")
+          .addEventListener("click", highlightField);
+
+      }
+    );
+  </script>
+
+</body>
+
+</html>
